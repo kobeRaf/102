@@ -1,0 +1,436 @@
+@extends('layouts.app')
+
+@section('content')
+
+<style>
+        /* Primary Theme Color */
+        :root {
+            --primary: #2b4b7b;
+            --primary-hover: #ffffff;
+            --primary-active: #1e3557;
+        }
+
+        /* Card header */
+        .card-header.bg-primary {
+            background-color: var(--primary) !important;
+            border-color: var(--primary);
+        }
+
+        /* Form control focus border */
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 0.15rem rgba(43, 75, 123, 0.35) !important;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 6px;
+        }
+
+        .pagination .page-link {
+            border-radius: 8px;
+            padding: 6px 12px;
+            border: none;
+            background: #f5f5f5;
+            color: #333;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .pagination .page-link:hover {
+            background: #007bff;
+            color: white;
+        }
+
+        .pagination .active .page-link {
+            background: #007bff;
+            color: #fff;
+            font-weight: bold;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        }
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background: #cfe2ff; /* same as table-primary */
+            z-index: 10;
+        }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-md-12">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center rounded-top">
+                <h5 class="mb-0">{{ __('Cheque Report') }}</h5>
+                <button type="button" class="btn btn-light btn-sm no-print" data-bs-toggle="modal" data-bs-target="#printOptionsModal">
+                    🖨️ Print Report
+                </button>
+            </div>
+
+            <div class="card-body">
+                <!-- 🔎 Filter Form -->
+                <form method="GET" action="{{ url('/checkadded/print') }}" class="row g-3 mb-4 no-print">
+                    <input type="hidden" name="generated_by" value="{{ auth()->user()->name }}">
+                    <div class="col-md-2">
+                        <input type="text" name="name" value="{{ request('name') }}" class="form-control" placeholder="🔎 Payee Name">
+                    </div>
+                    <div class="col-md-2">
+                        <select name="cheque_type" class="form-select">
+                            <option value="">Cheque Type</option>
+                            <option value="LBP" {{ request('cheque_type') == 'LBP' ? 'selected' : '' }}>LBP</option>
+                            <option value="DBP" {{ request('cheque_type') == 'DBP' ? 'selected' : '' }}>DBP</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="account_code" class="form-select">
+                            <option value="">Account No.</option>
+                            @foreach($accountcodes as $account)
+                                <option value="{{ $account->accountcode_name }}" 
+                                    {{ request('account_code') == $account->accountcode_name ? 'selected' : '' }}>
+                                    {{ $account->accountcode_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="fund_type" class="form-select">
+                            <option value="">Fund Type</option>
+                            <option value="General fund" {{ request('fund_type') == 'General fund' ? 'selected' : '' }}>General Fund</option>
+                            <option value="Trust Fund" {{ request('fund_type') == 'Trust Fund' ? 'selected' : '' }}>Trust Fund</option>
+                            <option value="SEF" {{ request('fund_type') == 'SEF' ? 'selected' : '' }}>School Educational Fund</option>
+                            <option value="Hospital Fund" {{ request('fund_type') == 'Hospital Fund' ? 'selected' : '' }}>Hospital Fund</option>
+                            <option value="20%" {{ request('fund_type') == '20%' ? 'selected' : '' }}>20%</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="status" class="form-select">
+                            <option value="">Status</option>
+                            <option value="for release" {{ request('status') == 'for release' ? 'selected' : '' }}>For Release</option>
+                            <option value="claimed" {{ request('status') == 'claimed' ? 'selected' : '' }}>Claimed</option>
+                            <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                            <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control">
+                    </div>
+
+                    <div class="col-md-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm px-4">Search</button>
+                        <a href="{{ url('/checkadded/print') }}" class="btn btn-primary btn-sm px-4">Reset</a>
+                    </div>
+                </form>
+
+                <!-- 📋 Cheques Table -->
+
+                @if($hasFilter)
+                    {{-- ✅ show table only when filters are used --}}
+                    <div id="report-section">
+                        <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>No</th>
+                                        <th>DV No</th>
+                                        <th>Account No</th>
+                                        <th>Payee</th>
+                                        <th>Amount</th>
+                                        <th>Type</th>
+                                        <th>Fund Type</th>
+                                        <th>Nature of Payment</th>
+                                        <th>Status</th>
+                                        <th>Date Issued</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($cheques as $cheque)
+                                        <tr>
+                                            <td name="check_no"><strong>{{ $cheque->no }}</strong></td>
+                                            <td name="check_dvno"><strong>{{ $cheque->dvno }}</strong></td>
+                                            <td name="check_account"><strong>{{ $cheque->accountcode->accountcode_name }}</strong></td>
+                                            <td name="check_payee"><strong>{{ $cheque->payee->name ?? 'N/A' }}</strong></td>
+                                            <td name="check_amount"><strong>₱ {{ number_format($cheque->amount, 2) }}</strong></td>
+                                            <td>{{ $cheque->cheque_type }}</td>
+                                            <td>{{ $cheque->fund_type }}</td>
+                                            <td name="check_nop">{{ $cheque->nop }}</td>
+                                            <td name="check_status">{{ ucfirst($cheque->status) }}</td>
+                                            <td name="check_date">{{ \Carbon\Carbon::parse($cheque->date_issued)->format('M d, Y') }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="12" class="text-center text-muted">No cheques found.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @else
+                    {{-- ✅ nothing searched yet --}}
+                    <p class="text-muted text-center mt-4">Please use the filters to display cheque data.</p>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Options Modal -->
+    <div class="modal fade" id="printOptionsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Select Report Type</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="printOptionsForm">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="report_type" id="pureReport" value="pure" checked>
+                            <label class="form-check-label" for="pureReport">Report of Check Issued</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="report_type" id="signatureReport" value="signature">
+                            <label class="form-check-label" for="signatureReport">Report for Signature</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="generatePrintBtn">Generate Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const generateBtn = document.getElementById('generatePrintBtn');
+        generateBtn.addEventListener('click', function() {
+
+            const reportType = document.querySelector('input[name="report_type"]:checked')?.value || 'pure';
+            const rows = document.querySelectorAll('#report-section tbody tr');
+            if (!rows.length) return alert("No report found to print.");
+
+            const rowsArray = Array.from(rows);
+
+            // Single table for printing
+            let tableHTML = `
+                <table style="width:100%; border-collapse: collapse;">
+                    <thead>
+                        <!-- Logos + Title -->
+                        <tr>
+                            <td colspan="${reportType === 'signature' ? 8 : 8}" style="border:none; padding:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="width:20%;">
+                                        <img src="{{ asset('reportlogo/1754211104_logounity.jpg') }}" style="width:70px;">
+                                        <img src="{{ asset('reportlogo/1754211087_243435545_224678423026230_3259480110448190001_n.jpg') }}" style="width:70px; margin-left:10px;">
+                                    </div>
+                                    <div style="text-align:center; flex-grow:1;">
+                                        <h1 style="margin:0;">Province of Misamis Oriental</h1>
+                                        <h3 style="margin:0;">Registered Checks Report</h3>
+                                        <h4 style="margin:0; font-size:18px;">${
+                                            (document.querySelector('[name="date_from"]').value && document.querySelector('[name="date_to"]').value)
+                                                ? `${new Date(document.querySelector('[name="date_from"]').value).toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' })} - ${new Date(document.querySelector('[name="date_to"]').value).toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                                                : new Date().getFullYear()
+                                        }</h4>
+                                    </div>
+                                    <div style="width:20%; text-align:right;">
+                                        <img src="{{ asset('reportlogo/1754211882_445811410_770052898574499_4519493116143803234_n.jpg') }}" style="width:70px; margin-right:10px;">
+                                        <img src="{{ asset('reportlogo/1754212004_471761391_630025442874032_3715888333161991690_n.jpg') }}" style="width:70px;">
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+
+                            <!-- Info Section -->
+                        <tr>
+                            <td colspan="8" style="border:none;">
+                                <div style="display:flex; justify-content:space-between; font-size:13px;">
+                                    <div style="text-align:left;">
+                                        <strong>Bank Name:</strong> <span class="bank-name">${
+                                            document.querySelector('[name="cheque_type"]')?.value === 'DBP' ? 'DBP - Development Bank of the Philippines' :
+                                            document.querySelector('[name="cheque_type"]')?.value === 'LBP' ? 'LBP - LandBank of the Philippines' : 'All'
+                                        }</span><br>
+                                        <strong>Account No.:</strong> ${document.querySelector('[name="account_code"]').value || 'All'}
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <strong>Fund Type:</strong> ${document.querySelector('[name="fund_type"]').value || 'All'}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Column Headers -->
+                        <tr>
+                            <th>Date Issued</th>
+                            <th>Check No</th>
+                            <th>DV No</th>
+                            <th>Account No</th>
+                            <th>Payee</th>
+                            <th>Amount</th>
+                            <th>Nature of Payment</th>
+                            ${reportType === 'signature' ? '<th>Signature</th>' : '<th>Status</th>'}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+           
+
+           
+
+            rowsArray.forEach(row => {
+
+                const status = (row.querySelector('[name="check_status"]')?.innerText || '').trim().toLowerCase();
+                const dateissued = row.querySelector('[name="check_date"]')?.innerText || '';
+
+                let statusLabel = '';
+                let statusColor = '';
+
+                switch (status) {
+                    case 'claimed':
+                        statusLabel = 'Claimed | Not returned';
+                        break;
+                    case 'for release':
+                        statusLabel = 'Not received';
+                        break;
+                    case 'cancelled':
+                        statusLabel = 'Cancelled';
+                        break;
+                    case 'returned':
+                        statusLabel = 'Returned';
+                        break;
+                    default:
+                        statusLabel = status;
+                        break;
+                }
+
+                switch (status) {
+                    case 'claimed':
+                        statusColor = '#d4edda'; // light green
+                        break;
+                    case 'for release':
+                        statusColor = '#ffe6f2'; // light pink
+                        break;
+                    case 'cancelled':
+                        statusColor = '#f8d7da'; // light red
+                        break;
+                    default:
+                        statusColor = '#ffffff'; // white
+                        break;
+                }
+
+
+                tableHTML += `
+                    <tr style="background-color:${reportType === 'signature' ? 'white' : statusColor};">
+                        <td style="text-align:left;">${dateissued}</td>
+                        <td style="text-align:left;">${row.querySelector('[name="check_no"]')?.innerText || ''}</td>
+                        <td>${row.querySelector('[name="check_dvno"]')?.innerText || ''}</td>
+                        <td>${row.querySelector('[name="check_account"]')?.innerText || ''}</td>
+                        <td style="text-align:left;">${row.querySelector('[name="check_payee"]')?.innerText || ''}</td>
+                        <td style="text-align:left;">${row.querySelector('[name="check_amount"]')?.innerText || ''}</td>
+                        <td style="text-align:left;">${row.querySelector('[name="check_nop"]')?.innerText || ''}</td>
+                        ${reportType === 'signature' ? '<td style="height:45px;"></td>' : `<td>${statusLabel}</td>`}
+                    </tr>
+                `;
+            });
+
+
+            
+            tableHTML += '</tbody></table>';
+
+            // PRINT WINDOW
+            const printWindow = window.open('', '', 'width=1200,height=900');
+            const generatedBy = `Generated by: ${document.querySelector('[name="generated_by"]')?.value || 'Unknown User'} on ${new Date().toLocaleString()}`;
+
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Registered Checks Report</title>
+                        <style>
+                        @media print {
+                            * {
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
+                        }
+
+                        body {
+                            font-family: Arial, sans-serif;
+                            font-size: 12px;
+                            color: #000;
+                            margin: 20px;
+                        }
+
+                        /* --- HEADER --- */
+                        .report-header {
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            text-align: center;
+                            margin-bottom: 20px;
+                        }
+
+                        .report-header img {
+                            width: 100px; /* adjust logo size here */
+                            height: auto;
+                        }
+
+                        .report-title {
+                            flex-grow: 1;
+                            text-align: center;
+                        }
+
+                        .report-title h1,
+                        .report-title h3,
+                        .report-title h4 {
+                            margin: 2px 0;
+                        }
+
+                        h4 {
+                            margin-bottom: 20px;
+                            font-weight: bold;
+                            color: #003366; /* High contrast dark blue for month */
+                        }
+
+                        /* --- TABLE --- */
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                        }
+
+                        th, td {
+                            border: 1px solid black;
+                            padding: 4px;
+                            text-align: center;
+                        }
+
+                        th {
+                            background: #007bff;
+                            color: white;
+                        }
+
+                
+
+                        .bank-name {
+                            background-color: #ffe5b4; /* Light orange background */
+                            padding: 2px 6px;
+                            border-radius: 4px;
+                        }
+                    </style>
+                </head>
+                <body>${tableHTML}</body>
+                        <div class="report-footer">${generatedBy}</div>
+
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(()=>{ printWindow.print(); printWindow.close(); }, 500);
+        });
+    });
+</script>
+
+@endsection

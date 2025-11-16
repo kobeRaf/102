@@ -1,0 +1,191 @@
+@extends('layouts.app')
+
+@section('content')
+
+{{-- <style>
+        /* Primary Theme Color */
+    :root {
+        --primary: #2b4b7b;
+        --primary-hover: #ffffff;
+        --primary-active: #1e3557;
+    }
+
+    /* Card header */
+    .card-header.bg-primary {
+        background-color: var(--primary) !important;
+        border-color: var(--primary);
+    }
+
+
+    /* Form control focus border */
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 0.15rem rgba(43, 75, 123, 0.35) !important;
+    }
+</style> --}}
+
+<div class="container-fluid">
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Manage Users</h5>
+            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="bi bi-plus-circle"></i> Add User
+            </button>
+        </div>
+
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Username</th>
+                        <th>Name</th>
+                        <th>User Type</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($users as $user)
+                    <tr>
+                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $user->user_name}}</td>
+                        <td>{{ $user->name }}</td>
+                        <td>{{ ucfirst($user->user_type) }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-secondary" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#editUserModal{{ $user->id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- Edit Modal -->
+                    <div class="modal fade" id="editUserModal{{ $user->id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <form method="POST" action="{{ route('settings.users.update', $user->id) }}">
+                                @csrf
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Edit User</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">  
+                                        <div class="mb-3">
+                                            <label>Name</label>
+                                            <input type="text" class="form-control" name="name" value="{{ $user->name }}" required>
+                                        </div>
+                                        <div class="mb-3">asd
+                                            <label>Username</label>
+                                            <input type="text" class="form-control" name="user_name" value="{{ $user->user_name }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label>New Password (optional)</label>
+                                            <input type="password" class="form-control" name="password">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label>User Type</label>
+                                            <select class="form-select" name="user_type" required>
+                                                <option value="admin" {{ $user->user_type == 'admin' ? 'selected' : '' }}>Admin</option>
+                                                <option value="check-adder" {{ $user->user_type == 'check-add' ? 'selected' : '' }}>Check Adder</option>
+                                                <option value="check-releaser" {{ $user->user_type == 'check-release' ? 'selected' : '' }}>Check Releaser</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ route('settings.users.store') }}">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Name</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Username</label>
+                        <input type="text" class="form-control" name="user_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Password</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>User Type</label>
+                        <select class="form-select" name="user_type" required>
+                            <option value="admin">Admin</option>
+                            <option value="check-adder">Check Adder</option>
+                            <option value="check-releaser">Check Releaser</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Add User</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+@endsection
+
+{{---POP UP CARD--}}
+    @if(session('success'))
+    <div id="successPopup" 
+        class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+        style="background: rgba(0,0,0,0.5); z-index: 1055; display: none;">
+        <div style="
+            width: 400px;
+            height: 200px;
+            background: rgb(255, 255, 255);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000000;
+            text-align: center;
+            font-weight: 500;
+            font-size: 1rem;
+        ">
+            {{ session('success') }}
+        </div>
+    </div>
+    @endif
+{{---POP UP CARD--}}
+
+<script>
+        // Auto-dismiss alert
+    document.addEventListener("DOMContentLoaded", function () {
+        const popup = document.getElementById('successPopup');
+        if (popup) {
+            popup.style.display = 'block';
+
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => {
+                popup.style.transition = "opacity 0.5s";
+                popup.style.opacity = "0";
+                setTimeout(() => popup.remove(), 200);
+            }, 2000);
+        }
+    });
+</script>

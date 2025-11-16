@@ -1,0 +1,278 @@
+@extends('layouts.app')
+@section('content')
+
+{{-- <style>
+            /* Primary Theme Color */
+    :root {
+        --primary: #2b4b7b;
+        --primary-hover: #ffffff;
+        --primary-active: #1e3557;
+    }
+
+    /* Card header */
+    .card-header.bg-primary {
+        background-color: var(--primary) !important;
+        border-color: var(--primary);
+    }
+
+
+    /* Form control focus border */
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 0.15rem rgba(43, 75, 123, 0.35) !important;
+    }
+    
+    /* Card Styles */
+    .icon-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin: 0 auto 10px;
+    }
+
+    .hover-card:hover {
+        transform: translateY(-5px);
+        transition: 0.3s;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.12), 0 6px 6px rgba(0,0,0,0.08);
+    }
+
+    .fieldcustom {
+        border-radius: 3px;
+        background: #ededed;
+        box-shadow: inset 10px 10px 8px #dadada,
+                    inset -10px -10px 8px #ffffff;
+    }
+
+    .fieldcustom.active {
+        border-color: #28a745 !important;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+</style> --}}
+
+<div class="container-fluid mt-3">
+
+
+    <div class="row g-4">
+        <!-- Cheques Summary -->
+        <div class="col-md-12">
+            <div class="card shadow border-0 rounded-4 hover-card p-3 text-center">
+                <div class="icon-circle bg-dark text-white">
+                    <i class="bi bi-receipt fs-3"></i>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <h5 class="fw-bold text-danger" data-bs-toggle="tooltip" data-bs-html="true" 
+                            title="Claimed: {{ $lbpClaimed }}<br>Cancelled: {{ $lbpCancelled }}">
+                            {{ $lbpCount }}
+                        </h5>
+                        <small class="text-muted">LBP Cheques</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 class="fw-bold text-warning" data-bs-toggle="tooltip" data-bs-html="true" 
+                            title="Claimed: {{ $dbpClaimed }}<br>Cancelled: {{ $dbpCancelled }}">
+                            {{ $dbpCount }}
+                        </h5>
+                        <small class="text-muted">DBP Cheques</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 class="fw-bold text-dark" data-bs-toggle="tooltip" data-bs-html="true" 
+                            title="Claimed: {{ $claimedCount }}<br>Cancelled: {{ $cancelledCount }}">
+                            {{ $totalCount }}
+                        </h5>
+                        <small class="text-muted">Total Cheques</small>
+                    </div>
+                </div>
+
+                @if($totalCount > 0)
+                <div class="progress mt-3" style="height: 12px;">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ round(($lbpCount/$totalCount)*100) }}%"></div>
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ round(($dbpCount/$totalCount)*100) }}%"></div>
+                </div>
+                <small class="text-muted">
+                    <b>LBP</b>: {{ round(($lbpCount/$totalCount)*100) }}% | <b>DBP</b>: {{ round(($dbpCount/$totalCount)*100) }}%
+                </small>
+                @endif
+            </div>
+        </div>
+
+    {{-- MODALS START --}}
+    <!-- Add Payee Modal -->
+        <div class="modal fade" id="addPayeeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-3 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Add New Payee</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addPayeeForm" method="POST" action="{{ route('payees.store') }}">
+                @csrf
+                <div class="modal-body">
+                    <input type="text" name="name" class="form-control" placeholder="Enter payee name" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+
+            </div>
+        </div>
+        </div>
+
+        <!-- Add Fund Modal -->
+        <div class="modal fade" id="addFundModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-3 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Add New Fund</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addFundForm" method="POST" action="{{ route('funds.store') }}">
+                @csrf
+                <div class="modal-body">
+                <input type="text" name="name" class="form-control mb-2" placeholder="Fund name" required>
+                <input type="text" name="code" class="form-control" placeholder="Fund code (optional)">
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+            </div>
+        </div>
+        </div>
+
+        <!-- Add RespoCenter Modal -->
+        <div class="modal fade" id="addRespoCenterModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-3 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Add New Respo Center</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addRespoForm" method="POST" action="{{ route('respocenters.store') }}">
+                @csrf
+                <div class="modal-body">
+                <input type="text" name="code" class="form-control mb-2" placeholder="Respo center code" required>
+                <input type="text" name="name" class="form-control" placeholder="Respo center name" required>
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+            </div>
+        </div>
+        </div>
+
+        <!-- Add Account Code Modal -->
+        <div class="modal fade" id="addAccountCodeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-3 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Add New Account Code</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addAccountCodeForm" method="POST" action="{{ route('accountcodes.store') }}">
+                @csrf
+                <div class="modal-body">
+                <input type="text" name="accountcode_name" class="form-control" placeholder="Enter account code name" required>
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+            </div>
+        </div>
+        </div>
+        
+    {{-- MODALS END --}}
+
+        <!-- Cards for Respo, Payee, Fund, Account Code -->
+        @foreach([
+            ['count'=>$respoCount,'title'=>'Total Respo Centers','icon'=>'bi-building','color'=>'primary','modal'=>'addRespoCenterModal','btn'=>'btn-primary', 'background-color' => 'primary',],
+            ['count'=>$payeeCount,'title'=>'Total Payees','icon'=>'bi-people-fill','color'=>'success','modal'=>'addPayeeModal','btn'=>'btn-success', 'background-color' => 'success',],
+            ['count'=>$fundCount ?? 0,'title'=>'Total Funds','icon'=>'bi-wallet2','color'=>'info','modal'=>'addFundModal','btn'=>'btn-info', 'background-color' => 'info',],
+            ['count'=>$accountCodeCount ?? 0,'title'=>'Total Account Codes','icon'=>'bi-upc-scan','color'=>'secondary', 'modal'=>'addAccountCodeModal','btn'=>'btn-secondary', 'background-color' => 'secondary'],
+        ] as $card)
+        <div class="col-md-3">
+            <div class="card shadow border-0 rounded-4 hover-card text-center h-100">
+                <div class="card-body">
+                    <div class="icon-circle bg-{{ $card['color'] }} text-white">
+                        <i class="bi {{ $card['icon'] }} fs-3"></i>
+                    </div>
+                    <h4 class="fw-bold text-{{ $card['color'] }}">{{ $card['count'] }}</h4>
+                    <p class="small text-muted mb-2">{{ $card['title'] }}</p>
+                    <button style="background-color: var(--bs-{{ $card['background-color'] }}) !important; border: none;" class="btn {{ $card['btn'] }} btn-sm  shadow-sm" data-bs-toggle="modal" data-bs-target="#{{ $card['modal'] }}">
+                        + Add {{ explode(' ', $card['title'])[1] }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+
+</div>
+
+{{---POP UP CARD--}}
+    @if(session('success'))
+    <div id="successPopup" 
+        class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+        style="background: rgba(0,0,0,0.5); z-index: 1055; display: none;">
+        <div style="
+            width: 400px;
+            height: 200px;
+            background: rgb(255, 255, 255);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000000;
+            text-align: center;
+            font-weight: 500;
+            font-size: 1rem;
+        ">
+            {{ session('success') }}
+        </div>
+    </div>
+    @endif
+{{---POP UP CARD--}}
+
+<!-- Bootstrap JS tooltips and auto-dismiss alerts -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const alert = document.getElementById("successAlert");
+        if(alert){
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+
+
+    // Auto-dismiss alert
+    document.addEventListener("DOMContentLoaded", function () {
+        const popup = document.getElementById('successPopup');
+        if (popup) {
+            popup.style.display = 'block';
+
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => {
+                popup.style.transition = "opacity 0.5s";
+                popup.style.opacity = "0";
+                setTimeout(() => popup.remove(), 200);
+            }, 2000);
+        }
+    });
+</script>
+
+@endsection
